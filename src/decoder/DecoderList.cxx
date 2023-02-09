@@ -30,6 +30,9 @@
 #include "plugins/PcmDecoderPlugin.hxx"
 #include "plugins/DsdiffDecoderPlugin.hxx"
 #include "plugins/DsfDecoderPlugin.hxx"
+#include "plugins/SacdIsoDecoderPlugin.hxx"
+#include "plugins/DvdaIsoDecoderPlugin.hxx"
+#include "plugins/DffDecoderPlugin.hxx"
 #include "plugins/FlacDecoderPlugin.h"
 #include "plugins/OpusDecoderPlugin.h"
 #include "plugins/VorbisDecoderPlugin.h"
@@ -79,7 +82,9 @@ constexpr const struct DecoderPlugin *decoder_plugins[] = {
 	&audiofile_decoder_plugin,
 #endif
 #ifdef ENABLE_DSD
-	&dsdiff_decoder_plugin,
+	#ifndef ENABLE_SACDISO
+		&dsdiff_decoder_plugin,
+	#endif
 	&dsf_decoder_plugin,
 #endif
 #ifdef ENABLE_FAAD
@@ -117,6 +122,15 @@ constexpr const struct DecoderPlugin *decoder_plugins[] = {
 #endif
 #ifdef ENABLE_GME
 	&gme_decoder_plugin,
+#endif
+#ifdef ENABLE_SACDISO
+	&sacdiso_decoder_plugin,
+	#ifdef ENABLE_DSD
+		&dff_decoder_plugin,
+	#endif
+#endif
+#ifdef ENABLE_DVDAISO
+	&dvdaiso_decoder_plugin,
 #endif
 	&pcm_decoder_plugin,
 	nullptr
