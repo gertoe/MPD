@@ -38,7 +38,6 @@
 #include "thread/Mutex.hxx"
 #include "util/BitReverse.hxx"
 #include "util/StringFormat.hxx"
-#include "util/StringView.hxx"
 #include "util/AllocatedString.hxx"
 #include "util/UriExtract.hxx"
 #include "util/Domain.hxx"
@@ -318,7 +317,12 @@ file_decode(DecoderClient &client, Path path_fs) {
 			if (param_lsbitfirst) {
 				bit_reverse_buffer(dsx_buf.data(), dsx_buf.data() + dsx_buf.size());
 			}
-			auto cmd = client.SubmitData(nullptr, dsx_buf.data(), dsx_buf.size(), 8 * dsx_buf.size() / 1000);
+
+			// unsigned kbit_rate = 8 * dsd_channels * dsd_samplerate / 1000;
+      //
+			// auto cmd = client.SubmitAudio(nullptr, std::span{dsx_buf.data(), dsx_buf.size()}, kbit_rate);
+			auto kbit_rate = dsd_channels * dsd_samplerate / 1000;
+			auto cmd = client.SubmitAudio(nullptr, std::span{ dsx_buf.data(), dsx_buf.size() }, kbit_rate);
 			if (cmd == DecoderCommand::SEEK) {
 				auto seconds = client.GetSeekTime().ToDoubleS();
 				if (sacd_reader->seek(seconds)) {

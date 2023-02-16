@@ -17,17 +17,32 @@
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 */
 
-#pragma once
+#include "dst_decoder.h"
+#include "decoder.h"
+#include "dst_engine.h"
 
-#include <cstddef>
-#include <vector>
+typedef dst_engine_t<dst::decoder_t, model_e::MT> ctx_t;
 
-class dst_decoder_t {
-	void* ctx{ nullptr };
-public:
-	dst_decoder_t(size_t num_threads = 0u);
-	~dst_decoder_t();
-	bool is_init();
-	int init(unsigned int channels, unsigned int channel_frame_size);
-	size_t run(std::vector<unsigned char>& dsx_data);
+static auto ctx_cast = [](auto ctx) {
+	return static_cast<ctx_t*>(ctx);
 };
+
+dst_decoder_t::dst_decoder_t(size_t num_threads) {
+	ctx = static_cast<void*>(new ctx_t(num_threads));
+}
+
+dst_decoder_t::~dst_decoder_t() {
+	delete ctx_cast(ctx);
+}
+
+bool dst_decoder_t::is_init() {
+	return ctx && ctx_cast(ctx)->is_init();
+}
+
+int dst_decoder_t::init(unsigned int channels, unsigned int channel_frame_size) {
+	return ctx_cast(ctx)->init(channels, channel_frame_size);
+}
+
+size_t dst_decoder_t::run(std::vector<unsigned char>& dsx_data) {
+	return ctx_cast(ctx)->run(dsx_data);
+}

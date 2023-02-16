@@ -38,7 +38,6 @@
 #include "thread/Mutex.hxx"
 #include "util/BitReverse.hxx"
 #include "util/StringFormat.hxx"
-#include "util/StringView.hxx"
 #include "util/UriExtract.hxx"
 #include "util/Domain.hxx"
 #include "Log.hxx"
@@ -283,7 +282,10 @@ file_decode(DecoderClient &client, Path path_fs) {
 		auto pcm_size = pcm_data.size();
 		if (dvda_reader->read_frame(pcm_data.data(), &pcm_size)) {
 			if (pcm_size > 0) {
-				cmd = client.SubmitData(nullptr, pcm_data.data(), pcm_size, channels * samplerate / 1000);
+				// unsigned kbit_rate = channels * samplerate * 24 / 1000;
+				// cmd = client.SubmitAudio(nullptr, std::span{pcm_data.data(), pcm_size}, kbit_rate);
+				auto kbit_rate = 24 * channels * samplerate / 1000;
+				cmd = client.SubmitAudio(nullptr, std::span{ pcm_data.data(), pcm_size }, kbit_rate);
 				if (cmd == DecoderCommand::STOP) {
 					break;
 				}

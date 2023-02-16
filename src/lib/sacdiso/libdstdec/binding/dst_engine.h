@@ -1,6 +1,6 @@
 /*
 * SACD Decoder plugin
-* Copyright (c) 2011-2022 Maxim V.Anisiutkin <maxim.anisiutkin@gmail.com>
+* Copyright (c) 2011-2023 Maxim V.Anisiutkin <maxim.anisiutkin@gmail.com>
 *
 * This program is free software; you can redistribute it and/or
 * modify it under the terms of the GNU Lesser General Public
@@ -22,7 +22,7 @@
 #include <cstdint>
 #include <thread>
 #include <vector>
-#include <semaphore.h>
+#include <std_semaphore.h>
 
 constexpr auto LOG_ERROR   { "Error: " };
 constexpr auto LOG_WARNING { "Warning: " };
@@ -39,13 +39,14 @@ enum class slot_state_t { SLOT_EMPTY, SLOT_LOADED, SLOT_RUNNING, SLOT_READY, SLO
 template<typename codec_t>
 class dst_slot_t {
 public:
+	std::thread thread;
 	semaphore_t inp_semaphore;
 	semaphore_t out_semaphore;
+	codec_t     codec;
 
 	slot_state_t         state;
 	std::vector<uint8_t> inp_data;
 	std::vector<uint8_t> out_data;
-	codec_t              codec;
 
 	dst_slot_t() : inp_semaphore(0), out_semaphore(0) {
 		state = slot_state_t::SLOT_EMPTY;
@@ -61,7 +62,7 @@ public:
 			inp_semaphore.acquire();
 			if (running && !inp_data.empty()) {
 				state = slot_state_t::SLOT_RUNNING;
-				auto error = codec.decode(inp_data.data(), 8 * inp_data.size(), out_data.data());
+				auto error = codec.decode(inp_data.data(), (unsigned int)(8 * inp_data.size()), out_data.data());
 				state = (error == 0) ? slot_state_t::SLOT_READY : slot_state_t::SLOT_READY_WITH_ERROR;
 			}
 			else {
@@ -75,7 +76,6 @@ public:
 template<typename codec_t, model_e model>
 class dst_engine_t {
 	std::vector<dst_slot_t<codec_t>> slots;
-	std::vector<std::thread> threads;
 
 	size_t slot_index;
 	size_t out_size;
@@ -88,25 +88,21 @@ public:
 		is_initialized = false;
 		run_threads = true;
 		slots.resize(num_threads ? num_threads : std::thread::hardware_concurrency());
-		for (auto& slot : slots) {
-			std::thread t([this, &slot]() {slot.run(run_threads); });
+		for (auto&& slot : slots) {
+			std::thread t([this, &slot]() { slot.run(run_threads); });
 			if (!t.joinable()) {
 				LOG(LOG_ERROR, "Could not start DST decoder thread");
 				return;
 			}
-			threads.push_back(std::move(t));
+			slot.thread = std::move(t);
 		}
 	}
 	~dst_engine_t() {
 		run_threads = false;
-		for (auto& slot : slots) {
+		for (auto&& slot : slots) {
 			slot.state = slot_state_t::SLOT_TERMINATING;
 			slot.inp_semaphore.release(); // Release worker (decoding) thread for exit
-		}
-		for (auto& thread : threads) {
-			thread.join(); // Wait until worker (decoding) thread exit
-		}
-		for (auto& slot : slots) {
+			slot.thread.join(); // Wait until worker (decoding) thread exit
 			slot.codec.close();
 		}
 	}
@@ -120,7 +116,7 @@ public:
 	int init(T1 channels, T2 frame_size, Args&&... args) {
 		int rv{ 0 };
 		out_size = channels * (unsigned int)frame_size;
-		for (auto& slot : slots) {
+		for (auto&& slot : slots) {
 			rv = slot.codec.init(channels, frame_size, std::forward<Args>(args)...);
 			if (rv) {
 				return rv;
@@ -129,7 +125,7 @@ public:
 		is_initialized = true;
 		return rv;
 	}
-	unsigned int run(std::vector<uint8_t>& dsx_data) {
+	size_t run(std::vector<uint8_t>& dsx_data) {
 
 		// Check if decoder is initialized
 		if (!is_initialized) {
@@ -138,7 +134,7 @@ public:
 		}
 
 		// Get current slot
-		auto& slot_set = slots[slot_index];
+		auto&& slot_set = slots[slot_index];
 
 		// Allocate encoded frame into the slot
 		slot_set.inp_data = std::move(dsx_data);
@@ -166,7 +162,7 @@ public:
 
 		// Move to the oldest slot
 		slot_index = (slot_index + 1) % slots.size();
-		auto& slot_get = slots[slot_index];
+		auto&& slot_get = slots[slot_index];
 
 		// Save decoded frame
 		if (slot_get.state != slot_state_t::SLOT_EMPTY) {

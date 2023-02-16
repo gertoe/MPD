@@ -23,9 +23,6 @@
 #include "lib/crypto/Base64.hxx"
 #include "lib/crypto/MD5.hxx"
 #include "util/ASCII.hxx"
-#include "util/ConstBuffer.hxx"
-#include "util/StringView.hxx"
-#include "util/WritableBuffer.hxx"
 #include "tag/Handler.hxx"
 #include "dvda_metabase.h"
 
@@ -72,14 +69,10 @@ static std::string get_md5(dvda_disc_t* p_disc) {
 		if (md5_source) {
 			if (md5_file->read(md5_source, md5_size) == md5_size) {
 				GlobalInitMD5();
-				ConstBuffer<void> md5_hash_buffer;
-				md5_hash_buffer.data = md5_source;
-				md5_hash_buffer.size = md5_size;
-				std::array<uint8_t, 16> md5_hash_array;
-				md5_hash_array = MD5(md5_hash_buffer);
-				for (auto md5_hash_value : md5_hash_array) {
+				std::span<std::byte> md5_span((std::byte*)md5_source, (size_t)md5_size);
+				for (auto md5_hash_value : MD5(md5_span)) {
 					char hex_byte[3];
-					sprintf(hex_byte, "%02X", md5_hash_value);
+					sprintf(hex_byte, "%02X", (uint8_t)md5_hash_value);
 					md5_string += hex_byte;
 				}
 			}
@@ -207,10 +200,9 @@ bool dvda_metabase_t::get_albumart(TagHandler& handler) {
 		return false;
 	}
 	auto debase64_size = CalculateBase64OutputSize(strlen(cdata_value));
-	std::unique_ptr<uint8_t[]> debase64_data;
-	debase64_data.reset(new uint8_t[debase64_size]);
-	debase64_size =	DecodeBase64({debase64_data.get(), debase64_size}, cdata_value);
-	handler.OnPicture(nullptr, {debase64_data.get(), debase64_size});
+	std::vector<std::byte> debase64_data(debase64_size);
+	debase64_size =	DecodeBase64(debase64_data, cdata_value);
+	handler.OnPicture(nullptr, debase64_data);
 	return true;
 }
 

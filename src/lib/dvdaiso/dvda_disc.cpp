@@ -1,6 +1,6 @@
 /*
 * MPD DVD-Audio Decoder plugin
-* Copyright (c) 2014 Maxim V.Anisiutkin <maxim.anisiutkin@gmail.com>
+* Copyright (c) 2014-2023 Maxim V.Anisiutkin <maxim.anisiutkin@gmail.com>
 *
 * DVD-Audio Decoder is free software; you can redistribute it and/or
 * modify it under the terms of the GNU Lesser General Public
@@ -24,7 +24,6 @@
 #include "Log.hxx"
 #include "dvda_disc.h"
 #include "util/Domain.hxx"
-#include "util/StringView.hxx"
 
 using namespace std;
 

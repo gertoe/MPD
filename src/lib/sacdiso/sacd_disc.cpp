@@ -1,6 +1,6 @@
 /*
 * MPD SACD Decoder plugin
-* Copyright (c) 2017-2021 Maxim V.Anisiutkin <maxim.anisiutkin@gmail.com>
+* Copyright (c) 2017-2023 Maxim V.Anisiutkin <maxim.anisiutkin@gmail.com>
 *
 * This module partially uses code from SACD Ripper http://code.google.com/p/sacd-ripper/ project
 *
@@ -24,7 +24,6 @@
 #include <malloc.h>
 #include <string.h>
 #include "sacd_disc.h"
-#include "util/StringView.hxx"
 
 static inline int has_two_channel(scarletbook_handle_t* handle) {
 	return handle->twoch_area_idx != -1;
